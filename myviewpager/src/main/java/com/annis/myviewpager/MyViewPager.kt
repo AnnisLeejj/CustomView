@@ -17,6 +17,12 @@ import android.widget.Toast
  * 1.滑动     切换(控制可超出30%宽度)
  * 2.点击左右 切换(达到边界是 超出10%宽度 的动画)
  *
+ *
+ * 状态
+ * 1.滑动   2.静止
+ * 事件
+ * 1.点击   2.拖拽
+ *
  */
 class MyViewPager : ViewGroup {
     private val mDragDistance = 10
@@ -62,11 +68,13 @@ class MyViewPager : ViewGroup {
         })
     }
 
-    private var currentIndex = 0
-
-    private var startX: Float = 0f
     private var isDrag = false//是否是拖拽事件
     private var showOut = false//是否显示视图外内容
+    private var sliding = false//是否在滑动
+
+
+    private var currentIndex = 0
+    private var startX: Float = 0f
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         Log.w("MyViewpager", "onTouchEvent")
         var handle = gestureDetector.onTouchEvent(event)//false//默认传递给下级视图
@@ -89,7 +97,8 @@ class MyViewPager : ViewGroup {
                 if (!isDrag) { //点击事件  rawX
                     val change = event.rawX > (width / 2)
                     if (change) {
-                        if (currentIndex == childCount - 1) {
+                        //已经在边界   && scrollX >= maxWidth       && scrollX <= 0
+                        if ((currentIndex == childCount - 1)) {
                             showOut = true
                         }
                         currentIndex++
@@ -129,22 +138,42 @@ class MyViewPager : ViewGroup {
     override fun computeScroll() {
         Log.w("MyViewpager", "computeScroll")
         if (scroller.computeScrollOffset()) {//滑动中
+            sliding = true
             //得到移动这个一小段对应的坐标
             val currX = scroller.currX
             scrollTo(currX, 0)
             invalidate()
         } else {//不滑动了
-            //是否需要归位
-            if (showOut) {
+            sliding = false
+            if (showOut) {//需要归位
                 pullOut()
+            } else {
+                //没有事件需要去处理
+                //判断一下当前位置是否在整页面
+                val redundance = scrollX % width
+                if (redundance == 0) {//显示正中
+                    return
+                }
+                if (redundance < 0) {
+                    scroller.startScroll(scrollX, scrollY, redundance, 0, Math.abs(redundance) * 2)
+                } else if (redundance > width / 2) {
+
+                } else {
+
+                }
             }
         }
     }
 
     /**
      * 弹出边界
+     * ##需要防止一直点击一直移动
      */
     private fun pushOut() {
+        if (scrollX < 0 || scrollX > maxWidth) {
+            //已经推出不可再执行滚动
+            return
+        }
         scroller.startScroll(
             scrollX, scrollY, when (currentIndex) {
                 0 -> -spillShowWidth
