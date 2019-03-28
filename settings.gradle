@@ -1,0 +1,2 @@
+include ':app', ':attributeview', ':myviewpager'
+rootProject.name='CustomSwitch'
